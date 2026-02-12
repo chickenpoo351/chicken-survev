@@ -2284,6 +2284,9 @@ export class Player extends BaseGameObject {
     visibleMapIndicators = new Set<MapIndicator>();
 
     msgStream = new net.MsgStream(new ArrayBuffer(65536));
+    getAuthoritativeZoom(): number {
+        return this.scopeZoomRadius[this.scope] ?? 1;
+    }
     sendMsgs(): void {
         const msgStream = this.msgStream;
         const game = this.game;
@@ -2345,9 +2348,14 @@ export class Player extends BaseGameObject {
         // temporary guard while the spectating code is not fixed
         if (!player) {
             player = this;
-        }
-
-        const radius = player.zoom + 4;
+        }        
+        // so this works... as in even if you on the client side set your zoom
+        // to something crazy the server will only send you the actually relevant
+        // data of your equipped scope so sure in theory you can technically view the whole
+        // map but after the range of your scope everything else is blank unlike before
+        // where the radius scaled with the client reported zoom I think I will try clamping
+        // the client side zoom though so you cant you know even set your zoom but thats for later
+        const radius = this.getAuthoritativeZoom() + 4;
         const rect = coldet.circleToAabb(player.pos, radius);
 
         const newVisibleObjects = game.grid.intersectColliderSet(rect);
