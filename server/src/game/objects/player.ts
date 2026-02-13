@@ -580,6 +580,7 @@ export class PlayerBarn {
 }
 
 export class Player extends BaseGameObject {
+    public occupiedBuilding?: Building;
     override readonly __type = ObjectType.Player;
 
     bounds = collider.createAabbExtents(
@@ -2125,6 +2126,7 @@ export class Player extends BaseGameObject {
                 }
             }
         }
+        this.occupiedBuilding = occupiedBuilding;
 
         // only dirty if healEffect changed from last tick to current tick (leaving or entering a heal region)
         if (oldHealEffect != this.healEffect) {
@@ -2348,7 +2350,7 @@ export class Player extends BaseGameObject {
         // temporary guard while the spectating code is not fixed
         if (!player) {
             player = this;
-        }        
+        }
         // so this works... as in even if you on the client side set your zoom
         // to something crazy the server will only send you the actually relevant
         // data of your equipped scope so sure in theory you can technically view the whole
@@ -2359,6 +2361,32 @@ export class Player extends BaseGameObject {
         const rect = coldet.circleToAabb(player.pos, radius);
 
         const newVisibleObjects = game.grid.intersectColliderSet(rect);
+        // erm... well it works but... I dont like it because you can literally
+        // only ever see players in buildings if your are also within the zoom zone of said building
+        // so im gonna have to find a way to make sure players are transmitted from the server
+        // if you are like looking through a window or the ceiling is meant to be gone...
+        for (const obj of Array.from(newVisibleObjects)) {
+            if (obj.__type === ObjectType.Player) {
+                const target = obj as Player;
+                if (target === this) continue;
+
+                const viewerBuilding = this.occupiedBuilding;
+                const targetBuilding = target.occupiedBuilding;
+
+                if (targetBuilding && !viewerBuilding) {
+                    newVisibleObjects.delete(obj);
+                    continue;
+                }
+                if (
+                    viewerBuilding &&
+                    targetBuilding &&
+                    viewerBuilding !== targetBuilding
+                ) {
+                    newVisibleObjects.delete(obj);
+                    continue;
+                }
+            }
+        }
         // client crashes if active player is not visible
         // so make sure its always added to visible objects
         newVisibleObjects.add(this);
