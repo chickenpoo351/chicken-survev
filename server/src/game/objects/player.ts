@@ -2289,6 +2289,24 @@ export class Player extends BaseGameObject {
     getAuthoritativeZoom(): number {
         return this.scopeZoomRadius[this.scope] ?? 1;
     }
+    isNearWindowOf(building: Building): boolean {
+        const zones = this.game.windowZones.get(building.__id);
+        if (!zones) return false;
+
+        const p = this.pos;
+
+        for (const zone of zones) {
+            if (
+                p.x >= zone.min.x &&
+                p.x <= zone.max.x &&
+                p.y >= zone.min.y &&
+                p.y <= zone.max.y
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
     sendMsgs(): void {
         const msgStream = this.msgStream;
         const game = this.game;
@@ -2374,16 +2392,20 @@ export class Player extends BaseGameObject {
                 const targetBuilding = target.occupiedBuilding;
 
                 if (targetBuilding && !viewerBuilding) {
-                    newVisibleObjects.delete(obj);
-                    continue;
+                    if (!this.isNearWindowOf(targetBuilding)) {
+                        newVisibleObjects.delete(obj);
+                        continue;
+                    }
                 }
                 if (
                     viewerBuilding &&
                     targetBuilding &&
                     viewerBuilding !== targetBuilding
                 ) {
-                    newVisibleObjects.delete(obj);
-                    continue;
+                    if (!this.isNearWindowOf(targetBuilding)) {
+                        newVisibleObjects.delete(obj);
+                        continue;
+                    }
                 }
             }
         }

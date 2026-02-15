@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { GameConfig, TeamMode } from "../../../shared/gameConfig";
 import * as net from "../../../shared/net/net";
+import type { AABB } from "../../../shared/utils/coldet";
 import type { Loadout } from "../../../shared/utils/loadout";
 import { math } from "../../../shared/utils/math";
 import { v2 } from "../../../shared/utils/v2";
@@ -27,6 +28,7 @@ import { type GameObject, ObjectRegister } from "./objects/gameObject";
 import { Gas } from "./objects/gas";
 import { LootBarn } from "./objects/loot";
 import { MapIndicatorBarn } from "./objects/mapIndicator";
+import type { Obstacle } from "./objects/obstacle";
 import { PlaneBarn } from "./objects/plane";
 import { PlayerBarn } from "./objects/player";
 import { ProjectileBarn } from "./objects/projectile";
@@ -47,6 +49,37 @@ export interface JoinTokenData {
 }
 
 export class Game {
+    windowZones: Map<number, AABB[]> = new Map();
+    registerWindowZone(window: Obstacle) {
+        const buildingId = window.parentBuildingId!;
+        const b = window.bounds;
+        // pretty sure I don't have to explain this but...
+        // this padding const is basically how big the zone
+        // is around the window however im pretty sure this number
+        // is almost perfect it makes the zone slightly bigger
+        // than the client version but not so big that you know
+        // the server sends player data from very far away...
+        // anyway on to making doors have occlusion logic now...
+        const padding = 6;
+
+        const zone: AABB = {
+            type: 1,
+            min: v2.create(
+                b.min.x + window.pos.x - padding,
+                b.min.y + window.pos.y - padding,
+            ),
+            max: v2.create(
+                b.max.x + window.pos.x + padding,
+                b.max.y + window.pos.y + padding,
+            ),
+        };
+
+        if (!this.windowZones.has(buildingId)) {
+            this.windowZones.set(buildingId, []);
+        }
+
+        this.windowZones.get(buildingId)!.push(zone);
+    }
     started = false;
     stopped = false;
     allowJoin = false;

@@ -159,6 +159,10 @@ export class Obstacle extends BaseGameObject {
 
         this.mapObstacleBounds = [this.collider];
 
+        if (this.isWindow && this.parentBuildingId) {
+            this.game.registerWindowZone(this);
+        }
+
         this.destructible = !!def.destructible;
 
         this.isDoor = !!def.door;
